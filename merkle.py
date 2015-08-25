@@ -114,7 +114,7 @@ def check_hex_chain(chain):
     return check_chain([(i[0].decode('hex'), i[1]) for i in chain])
 
 """
-from merkle import Node, MerkleTree, check_chain, check_hex_chain
+from merkle import *
 import json
 q=MerkleTree()
 for i in 'abcd':
