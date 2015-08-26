@@ -22,10 +22,10 @@ class Node(object):
         """
         chain = []
         this = self
-        chain.append((this.val, "SELF"))
+        chain.append((this.val, 'SELF'))
         while 1:
             if not this.p:
-                chain.append((this.val, "ROOT"))
+                chain.append((this.val, 'ROOT'))
                 break
             else:
                 chain.append((this.sib.val, this.sib.side))
@@ -64,7 +64,7 @@ class MerkleTree(object):
         """
         self.root = None
 
-    def calc(self):
+    def build(self):
         """Calculate the merkle root and make node-node references in the whole tree.
         """
         layer = self.leaves[::]
@@ -73,6 +73,7 @@ class MerkleTree(object):
             if len(layer) == 1:
                 self.root = layer[0]
                 break
+        return self.root.val.encode('hex')
 
     def _build(self, leaves):
         """Private helper function to create the next aggregation level and put all references in place
@@ -103,15 +104,15 @@ def check_chain(chain):
         elif chain[i][1] == 'L':
             link = sha256(chain[i][0] + link).digest()
     if link == chain[-1][0]:
-        return 'success', link.encode('hex')
+        return link
     else:
-        return 'failure', link.encode('hex')
+        raise AssertionError('The Merkle Chain is not valid')
 
 
 def check_hex_chain(chain):
     """Verify a merkle chain, presented in hex form to see if the Merkle root can be reproduced.
     """
-    return check_chain([(i[0].decode('hex'), i[1]) for i in chain])
+    return check_chain([(i[0].decode('hex'), i[1]) for i in chain]).encode('hex')
 
 """
 from merkle import *
@@ -121,7 +122,7 @@ for i in 'abcd':
     q.add(i)
 
 
-q.calc()
+q.build()
 q.root
 w=q.leaves[2]
 c=w.chain()
