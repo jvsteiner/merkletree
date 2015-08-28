@@ -5,7 +5,7 @@ hash_function = sha256
 
 
 class Node(object):
-    """Each node can have it's own references to left and right child nodes, it's parent, and sibling.
+    """Each node has references to left and right child nodes, parent, and sibling.
     It can also be aware of whether it is on the left or right hand side.
     """
     def __init__(self, data):
@@ -35,8 +35,6 @@ class MerkleTree(object):
         """Add a value to the tree, it's value is hashed automatically
         """
         self.leaves.append(Node(data))
-        # if self.root:
-        #     self.calc()
 
     def add_hash(self, _hash):
         """Add a precomputed hash value, hex format required/assumed.
@@ -66,8 +64,7 @@ class MerkleTree(object):
     def _build(self, leaves):
         """Private helper function to create the next aggregation level and put all references in place
         """
-        new = []
-        odd = None
+        new, odd = [], None
         # ensure even number of leaves
         if len(leaves) % 2 == 1:
             odd = leaves.pop(-1)
@@ -82,7 +79,7 @@ class MerkleTree(object):
         return new
 
     def get_chain(self, index):
-        """Assemble and return the chain leading to the merkle root of this tree
+        """Assemble and return the chain leading from a given node to the merkle root of this tree
         """
         chain = []
         this = self.leaves[index]
@@ -96,13 +93,21 @@ class MerkleTree(object):
                 this = this.p
         return chain
 
+    def get_all_chains(self):
+        """Assemble and return chains for all nodes to the merkle root
+        """
+        return [self.get_chain(i) for i in range(len(self.leaves))]
+
     def get_hex_chain(self, index):
-        """Assemble and return the chain leading to the merkle root of this tree with hash values in hex form
+        """Assemble and return the chain leading from a given node to the merkle root of this tree
+        with hash values in hex form
         """
         return [(i[0].encode('hex'), i[1]) for i in self.get_chain(index)]
 
-    def combine(self, l_node, r_node):
-        return hash_function(l_node.val + r_node.val).digest()
+    def get_all_hex_chains(self):
+        """Assemble and return chains for all nodes to the merkle root, in hex form
+        """
+        return [[(i[0].encode('hex'), i[1]) for i in j] for j in self.get_all_chains()]
 
 
 def check_chain(chain):
@@ -129,7 +134,7 @@ def check_hex_chain(chain):
 from merkle import *
 import json
 q=MerkleTree()
-for i in 'abcde':
+for i in 'abcd':
     q.add(i)
 
 
