@@ -9,8 +9,8 @@ for i in 'abcd':
 
 root = test_tree.build()
 test_node = test_tree.leaves[0]
-test_chain = test_node.chain()
-test_hex_chain = json.dumps(test_node.hex_chain())
+test_chain = test_tree.get_chain(0)
+test_hex_chain = json.dumps(test_tree.get_hex_chain(0))
 
 
 def test0():

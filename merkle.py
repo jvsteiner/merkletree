@@ -1,6 +1,8 @@
 import json
 from hashlib import sha256
 
+hash_function = sha256
+
 
 class Node(object):
     """Each node can have it's own references to left and right child nodes, it's parent, and sibling.
@@ -9,7 +11,8 @@ class Node(object):
     def __init__(self, data):
         self.l = None
         self.r = None
-        self.val = sha256(data).digest()
+        self.val = hash_function(data).digest()
+        # self.val = data
         self.p = None
         self.sib = None
         self.side = None
@@ -17,33 +20,16 @@ class Node(object):
     def __repr__(self):
         return "Val: <" + str(self.val.encode('hex')) + ">"
 
-    def chain(self):
-        """Assemble and return the chain leading to the merkle root of this tree
-        """
-        chain = []
-        this = self
-        chain.append((this.val, 'SELF'))
-        while 1:
-            if not this.p:
-                chain.append((this.val, 'ROOT'))
-                break
-            else:
-                chain.append((this.sib.val, this.sib.side))
-                this = this.p
-        return chain
-
-    def hex_chain(self):
-        """Assemble and return the chain leading to the merkle root of this tree with hash values in hex form
-        """
-        return [(i[0].encode('hex'), i[1]) for i in self.chain()]
-
 
 class MerkleTree(object):
     """A Merkle tree implementation.  Added values are stored in a list until the tree is built.
     """
-    def __init__(self):
-        self.leaves = []
+    def __init__(self, leaves=[]):
+        self.leaves = [Node(leaf) for leaf in leaves]
         self.root = None
+
+    def __eq__(self, obj):
+        return self.root.val == obj.root.val
 
     def add(self, data):
         """Add a value to the tree, it's value is hashed automatically
@@ -67,6 +53,8 @@ class MerkleTree(object):
     def build(self):
         """Calculate the merkle root and make node-node references in the whole tree.
         """
+        if not self.leaves:
+            raise AssertionError('No leaves')
         layer = self.leaves[::]
         while 1:
             layer = self._build(layer)
@@ -79,19 +67,42 @@ class MerkleTree(object):
         """Private helper function to create the next aggregation level and put all references in place
         """
         new = []
+        odd = None
         # ensure even number of leaves
         if len(leaves) % 2 == 1:
-            leaves.append(leaves[-1])
+            odd = leaves.pop(-1)
         for i in range(0, len(leaves), 2):
             newnode = Node(leaves[i].val + leaves[i + 1].val)
             newnode.l, newnode.r = leaves[i], leaves[i + 1]
             leaves[i].side, leaves[i + 1].side, leaves[i].p, leaves[i + 1].p = 'L', 'R', newnode, newnode
             leaves[i].sib, leaves[i + 1].sib = leaves[i + 1], leaves[i]
             new.append(newnode)
+        if odd:
+            new.append(odd)
         return new
 
+    def get_chain(self, index):
+        """Assemble and return the chain leading to the merkle root of this tree
+        """
+        chain = []
+        this = self.leaves[index]
+        chain.append((this.val, 'SELF'))
+        while 1:
+            if not this.p:
+                chain.append((this.val, 'ROOT'))
+                break
+            else:
+                chain.append((this.sib.val, this.sib.side))
+                this = this.p
+        return chain
+
+    def get_hex_chain(self, index):
+        """Assemble and return the chain leading to the merkle root of this tree with hash values in hex form
+        """
+        return [(i[0].encode('hex'), i[1]) for i in self.get_chain(index)]
+
     def combine(self, l_node, r_node):
-        return sha256(l_node.val + r_node.val).digest()
+        return hash_function(l_node.val + r_node.val).digest()
 
 
 def check_chain(chain):
@@ -100,9 +111,9 @@ def check_chain(chain):
     link = chain[0][0]
     for i in range(1, len(chain) - 1):
         if chain[i][1] == 'R':
-            link = sha256(link + chain[i][0]).digest()
+            link = hash_function(link + chain[i][0]).digest()
         elif chain[i][1] == 'L':
-            link = sha256(chain[i][0] + link).digest()
+            link = hash_function(chain[i][0] + link).digest()
     if link == chain[-1][0]:
         return link
     else:
@@ -118,11 +129,13 @@ def check_hex_chain(chain):
 from merkle import *
 import json
 q=MerkleTree()
-for i in 'abcd':
+for i in 'abcde':
     q.add(i)
 
 
+# w=MerkleTree([i for i in 'abcd'])
 q.build()
+w.build()
 q.root
 w=q.leaves[2]
 c=w.chain()
