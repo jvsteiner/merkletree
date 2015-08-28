@@ -1,4 +1,3 @@
-import json
 from hashlib import sha256
 
 hash_function = sha256
@@ -6,13 +5,16 @@ hash_function = sha256
 
 class Node(object):
     """Each node has references to left and right child nodes, parent, and sibling.
-    It can also be aware of whether it is on the left or right hand side.
+    It can also be aware of whether it is on the left or right hand side. data is hashed 
+    automatically by default, but does not have to be, if prehashed param is set to False.
     """
-    def __init__(self, data):
+    def __init__(self, data, prehashed=False):
         self.l = None
         self.r = None
-        self.val = hash_function(data).digest()
-        # self.val = data
+        if prehashed:
+            self.val = data
+        else:
+            self.val = hash_function(data).digest()
         self.p = None
         self.sib = None
         self.side = None
@@ -23,25 +25,29 @@ class Node(object):
 
 class MerkleTree(object):
     """A Merkle tree implementation.  Added values are stored in a list until the tree is built.
+    A list of data elements for Node values can be optionally supplied.  Data supplied to the 
+    constructor is hashed by default, but this can be overridden by providing the prehashed=False __float__
+    in which case, node values should be supplied in hex format.
     """
-    def __init__(self, leaves=[]):
-        self.leaves = [Node(leaf) for leaf in leaves]
+    def __init__(self, leaves=[], prehashed=False):
+        if prehashed:
+            self.leaves = [Node(leaf.decode('hex'), prehashed=True) for leaf in leaves]
+        else:
+            self.leaves = [Node(leaf) for leaf in leaves]
         self.root = None
 
     def __eq__(self, obj):
-        return self.root.val == obj.root.val
+        return (self.root.val == obj.root.val) and (self.__class__ == obj.__class__)
 
     def add(self, data):
         """Add a value to the tree, it's value is hashed automatically
         """
         self.leaves.append(Node(data))
 
-    def add_hash(self, _hash):
+    def add_hash(self, value):
         """Add a precomputed hash value, hex format required/assumed.
         """
-        new_node = Node('temp')
-        new_node.val = _hash.decode('hex')
-        self.leaves.append(new_node)
+        self.leaves.append(Node(value.decode('hex'), prehashed=True))
 
     def clear(self):
         """Releases the Merkle root, and node references are garbage collected
@@ -132,19 +138,18 @@ def check_hex_chain(chain):
 
 """
 from merkle import *
-import json
 q=MerkleTree()
 for i in 'abcd':
     q.add(i)
 
 
-# w=MerkleTree([i for i in 'abcd'])
+w=MerkleTree([i for i in 'abcd'])
 q.build()
 w.build()
+q == w
 q.root
 w=q.leaves[2]
 c=w.chain()
 check_chain(c)
-e=json.dumps(w.hex_chain())
 check_hex_chain(json.loads(e))
 """
