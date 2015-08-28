@@ -5,16 +5,16 @@ hash_function = sha256
 
 class Node(object):
     """Each node has references to left and right child nodes, parent, and sibling.
-    It can also be aware of whether it is on the left or right hand side. data is hashed 
+    It can also be aware of whether it is on the left or right hand side. data is hashed
     automatically by default, but does not have to be, if prehashed param is set to False.
     """
     def __init__(self, data, prehashed=False):
-        self.l = None
-        self.r = None
         if prehashed:
             self.val = data
         else:
             self.val = hash_function(data).digest()
+        self.l = None
+        self.r = None
         self.p = None
         self.sib = None
         self.side = None
@@ -25,8 +25,8 @@ class Node(object):
 
 class MerkleTree(object):
     """A Merkle tree implementation.  Added values are stored in a list until the tree is built.
-    A list of data elements for Node values can be optionally supplied.  Data supplied to the 
-    constructor is hashed by default, but this can be overridden by providing the prehashed=False __float__
+    A list of data elements for Node values can be optionally supplied.  Data supplied to the
+    constructor is hashed by default, but this can be overridden by providing prehashed=False
     in which case, node values should be supplied in hex format.
     """
     def __init__(self, leaves=[], prehashed=False):
@@ -40,12 +40,12 @@ class MerkleTree(object):
         return (self.root.val == obj.root.val) and (self.__class__ == obj.__class__)
 
     def add(self, data):
-        """Add a value to the tree, it's value is hashed automatically
+        """Add a Node to the tree, providing data, which is hashed automatically
         """
         self.leaves.append(Node(data))
 
     def add_hash(self, value):
-        """Add a precomputed hash value, hex format required/assumed.
+        """Add a Node based on a precomputed hash value, hex format required/assumed.
         """
         self.leaves.append(Node(value.decode('hex'), prehashed=True))
 
@@ -55,7 +55,7 @@ class MerkleTree(object):
         self.root = None
 
     def build(self):
-        """Calculate the merkle root and make node-node references in the whole tree.
+        """Calculate the merkle root and make references between nodes in the tree.
         """
         if not self.leaves:
             raise AssertionError('No leaves')
@@ -135,6 +135,13 @@ def check_hex_chain(chain):
     """Verify a merkle chain, presented in hex form to see if the Merkle root can be reproduced.
     """
     return check_chain([(i[0].decode('hex'), i[1]) for i in chain]).encode('hex')
+
+
+def join_chains(low, high):
+    """Join two hierarchical merkle chains in the case where the root of a lower tree is an input
+    to a higher level tree. The resulting chain should check out using the check functions.
+    """
+    return low[:-1] + high[1:]
 
 """
 from merkle import *
