@@ -142,21 +142,3 @@ def join_chains(low, high):
     to a higher level tree. The resulting chain should check out using the check functions.
     """
     return low[:-1] + high[1:]
-
-"""
-from merkle import *
-q=MerkleTree()
-for i in 'abcd':
-    q.add(i)
-
-
-w=MerkleTree([i for i in 'abcd'])
-q.build()
-w.build()
-q == w
-q.root
-w=q.leaves[2]
-c=w.chain()
-check_chain(c)
-check_hex_chain(json.loads(e))
-"""
