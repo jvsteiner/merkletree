@@ -3,10 +3,14 @@ from hashlib import sha256
 hash_function = sha256
 
 
+class MerkleError(Exception):
+    pass
+
+
 class Node(object):
-    """Each node has references to left and right child nodes, parent, and sibling.
-    It can also be aware of whether it is on the left or right hand side. data is hashed
-    automatically by default, but does not have to be, if prehashed param is set to False.
+    """Each node has, as attributes, references to left (l) and right (r) child nodes, parent (p),
+    and sibling (sib) node. It can also be aware of whether it is on the left or right hand side (side).
+    data is hashed automatically by default, but does not have to be, if prehashed param is set to True.
     """
     def __init__(self, data, prehashed=False):
         if prehashed:
@@ -25,9 +29,9 @@ class Node(object):
 
 class MerkleTree(object):
     """A Merkle tree implementation.  Added values are stored in a list until the tree is built.
-    A list of data elements for Node values can be optionally supplied.  Data supplied to the
-    constructor is hashed by default, but this can be overridden by providing prehashed=False
-    in which case, node values should be supplied in hex format.
+    A list of data elements for Node values can be optionally supplied to the constructor.
+    Data supplied to the constructor is hashed by default, but this can be overridden by
+    providing prehashed=True in which case, node values should be hex encoded.
     """
     def __init__(self, leaves=[], prehashed=False):
         if prehashed:
@@ -45,12 +49,13 @@ class MerkleTree(object):
         self.leaves.append(Node(data))
 
     def add_hash(self, value):
-        """Add a Node based on a precomputed hash value, hex format required/assumed.
+        """Add a Node based on a precomputed, hex encoded hash value.
         """
         self.leaves.append(Node(value.decode('hex'), prehashed=True))
 
     def clear(self):
-        """Releases the Merkle root, and node references are garbage collected
+        """Clears the Merkle Tree by releasing the Merkle root, causing the node-node references
+        to be garbage collected.
         """
         self.root = None
 
@@ -58,7 +63,7 @@ class MerkleTree(object):
         """Calculate the merkle root and make references between nodes in the tree.
         """
         if not self.leaves:
-            raise AssertionError('No leaves')
+            raise MerkleError('The tree has no leaves and cannot be calculated.')
         layer = self.leaves[::]
         while 1:
             layer = self._build(layer)
@@ -128,7 +133,7 @@ def check_chain(chain):
     if link == chain[-1][0]:
         return link
     else:
-        raise AssertionError('The Merkle Chain is not valid')
+        raise MerkleError('The Merkle Chain is not valid')
 
 
 def check_hex_chain(chain):

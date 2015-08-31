@@ -53,8 +53,10 @@ def test8():
 def test9():
     assert test_node.val.encode('hex') == 'ca978112ca1bbdcafac231b39a23dc4da786eff8147c4e72b9807785afee48bb'
 
+
 def test10():
     assert test_tree == test_tree2
+
 
 def test11():
     t11 = MerkleTree(['14ede5e8e97ad9372327728f5099b95604a39593cac3bd38a343ad76205213e7'], prehashed=True)
