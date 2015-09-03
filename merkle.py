@@ -44,20 +44,25 @@ class MerkleTree(object):
         return (self.root.val == obj.root.val) and (self.__class__ == obj.__class__)
 
     def add(self, data):
-        """Add a Node to the tree, providing data, which is hashed automatically
+        """Add a Node to the tree, providing data, which is hashed automatically.
         """
         self.leaves.append(Node(data))
 
     def add_hash(self, value):
-        """Add a Node based on a precomputed, hex encoded hash value.
+        """Add a Node based on a precomputed, hex encoded, hash value.
         """
         self.leaves.append(Node(value.decode('hex'), prehashed=True))
 
     def clear(self):
-        """Clears the Merkle Tree by releasing the Merkle root, causing the node-node references
-        to be garbage collected.
+        """Clears the Merkle Tree by releasing the Merkle root and leaf parent references, the rest
+        should be garbage collected.  This may be useful for situations where you want to take an existing
+        tree, make changes to the leaves, but leave it uncalculated for some time, without node
+        references that are no longer correct still hanging around. Usually it is better just to make
+        a new tree.
         """
         self.root = None
+        for leaf in self.leaves:
+            leaf.p = None
 
     def build(self):
         """Calculate the merkle root and make references between nodes in the tree.
@@ -70,13 +75,13 @@ class MerkleTree(object):
             if len(layer) == 1:
                 self.root = layer[0]
                 break
-        return self.root.val.encode('hex')
+        return self.root.val
 
     def _build(self, leaves):
-        """Private helper function to create the next aggregation level and put all references in place
+        """Private helper function to create the next aggregation level and put all references in place.
         """
         new, odd = [], None
-        # ensure even number of leaves
+        # check if even number of leaves, promote odd leaf to next level, if not
         if len(leaves) % 2 == 1:
             odd = leaves.pop(-1)
         for i in range(0, len(leaves), 2):
@@ -90,7 +95,7 @@ class MerkleTree(object):
         return new
 
     def get_chain(self, index):
-        """Assemble and return the chain leading from a given node to the merkle root of this tree
+        """Assemble and return the chain leading from a given node to the merkle root of this tree.
         """
         chain = []
         this = self.leaves[index]
@@ -105,7 +110,7 @@ class MerkleTree(object):
         return chain
 
     def get_all_chains(self):
-        """Assemble and return chains for all nodes to the merkle root
+        """Assemble and return a list of all chains for all leaf nodes to the merkle root.
         """
         return [self.get_chain(i) for i in range(len(self.leaves))]
 
@@ -116,13 +121,13 @@ class MerkleTree(object):
         return [(i[0].encode('hex'), i[1]) for i in self.get_chain(index)]
 
     def get_all_hex_chains(self):
-        """Assemble and return chains for all nodes to the merkle root, in hex form
+        """Assemble and return a list of all chains for all nodes to the merkle root, hex encoded.
         """
         return [[(i[0].encode('hex'), i[1]) for i in j] for j in self.get_all_chains()]
 
 
 def check_chain(chain):
-    """Verify a presented merkle chain to see if the Merkle root can be reproduced.
+    """Verify a merkle chain to see if the Merkle root can be reproduced.
     """
     link = chain[0][0]
     for i in range(1, len(chain) - 1):
@@ -130,20 +135,23 @@ def check_chain(chain):
             link = hash_function(link + chain[i][0]).digest()
         elif chain[i][1] == 'L':
             link = hash_function(chain[i][0] + link).digest()
+        else:
+            raise MerkleError('Link %s has no side value: %s' % (str(i), str(chain[i][0].encode('hex'))))
     if link == chain[-1][0]:
         return link
     else:
-        raise MerkleError('The Merkle Chain is not valid')
+        raise MerkleError('The Merkle Chain is not valid.')
 
 
 def check_hex_chain(chain):
-    """Verify a merkle chain, presented in hex form to see if the Merkle root can be reproduced.
+    """Verify a merkle chain, with hashes hex encoded, to see if the Merkle root can be reproduced.
     """
     return check_chain([(i[0].decode('hex'), i[1]) for i in chain]).encode('hex')
 
 
 def join_chains(low, high):
     """Join two hierarchical merkle chains in the case where the root of a lower tree is an input
-    to a higher level tree. The resulting chain should check out using the check functions.
+    to a higher level tree. The resulting chain should check out using the check functions. Use on either
+    hex or binary chains.
     """
     return low[:-1] + high[1:]
