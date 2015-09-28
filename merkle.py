@@ -54,7 +54,7 @@ class MerkleTree(object):
         self.leaves.append(Node(value.decode('hex'), prehashed=True))
 
     def clear(self):
-        """Clears the Merkle Tree by releasing the Merkle root and leaf parent references, the rest
+        """Clears the Merkle Tree by releasing the Merkle root and each leaf's references, the rest
         should be garbage collected.  This may be useful for situations where you want to take an existing
         tree, make changes to the leaves, but leave it uncalculated for some time, without node
         references that are no longer correct still hanging around. Usually it is better just to make
@@ -62,7 +62,7 @@ class MerkleTree(object):
         """
         self.root = None
         for leaf in self.leaves:
-            leaf.p = None
+            leaf.p, leaf.sib, leaf.side = (None, ) * 3
 
     def build(self):
         """Calculate the merkle root and make references between nodes in the tree.
@@ -70,11 +70,24 @@ class MerkleTree(object):
         if not self.leaves:
             raise MerkleError('The tree has no leaves and cannot be calculated.')
         layer = self.leaves[::]
-        while 1:
+        while len(layer) != 1:
             layer = self._build(layer)
-            if len(layer) == 1:
-                self.root = layer[0]
-                break
+        self.root = layer[0]
+        return self.root.val
+
+    def build_fun(self, layer=None):
+        """Calculate the merkle root and make references between nodes in the tree.
+        Written in functional style purely for fun.
+        """
+        if not layer:
+            if not self.leaves:
+                raise MerkleError('The tree has no leaves and cannot be calculated.')
+            layer = self.leaves[::]
+        layer = self._build(layer)
+        if len(layer) == 1:
+            self.root = layer[0]
+        else:
+            self.build_fun(layer=layer)
         return self.root.val
 
     def _build(self, leaves):
@@ -100,13 +113,10 @@ class MerkleTree(object):
         chain = []
         this = self.leaves[index]
         chain.append((this.val, 'SELF'))
-        while 1:
-            if not this.p:
-                chain.append((this.val, 'ROOT'))
-                break
-            else:
-                chain.append((this.sib.val, this.sib.side))
-                this = this.p
+        while this.p:
+            chain.append((this.sib.val, this.sib.side))
+            this = this.p
+        chain.append((this.val, 'ROOT'))
         return chain
 
     def get_all_chains(self):

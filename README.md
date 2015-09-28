@@ -1,5 +1,5 @@
 # merkletree
-A Python implementation of the Merkle Hash Tree Algorithm using sha256
+A Python implementation of the Merkle/Hash Tree Algorithm
 
 This implementation uses distinct node objects which are designed to be easily traversible.  Each node has references to it's children, parent, and sibling nodes.  The tree has a convenience method for accessing the path from any node to the Merkle root.
 
