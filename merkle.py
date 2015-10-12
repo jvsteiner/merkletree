@@ -63,6 +63,7 @@ class MerkleTree(object):
         self.root = None
         for leaf in self.leaves:
             leaf.p, leaf.sib, leaf.side = (None, ) * 3
+        self.leaves = []
 
     def build(self):
         """Calculate the merkle root and make references between nodes in the tree.

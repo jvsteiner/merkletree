@@ -3,109 +3,105 @@ import json
 from merkle import *
 
 
-test_tree = MerkleTree()
-for i in 'abcd':
-    test_tree.add(i)
-
-test_tree2 = MerkleTree([i for i in 'abcd'])
-root = test_tree.build()
-test_tree2.build()
-test_node = test_tree.leaves[0]
-test_chain = test_tree.get_chain(0)
-test_hex_chain = test_tree.get_hex_chain(0)
+@pytest.fixture
+def tree():
+    tree = MerkleTree([i for i in 'abcd'])
+    tree.build()
+    return tree
 
 
-def test0():
-    assert root.encode('hex') == '14ede5e8e97ad9372327728f5099b95604a39593cac3bd38a343ad76205213e7'
+@pytest.fixture
+def node(tree):
+    return tree.leaves[0]
 
 
-def test1():
-    assert test_tree.root.val.encode('hex') == '14ede5e8e97ad9372327728f5099b95604a39593cac3bd38a343ad76205213e7'
+@pytest.fixture
+def chain(tree):
+    return tree.get_chain(0)
 
 
-def test2():
-    assert check_chain(test_chain) == "\x14\xed\xe5\xe8\xe9z\xd97#'r\x8fP\x99\xb9V\x04\xa3\x95\x93\xca\xc3\xbd8\xa3C\xadv R\x13\xe7"
+@pytest.fixture
+def hexchain(tree):
+    return tree.get_hex_chain(0)
 
 
-def test3():
-    assert check_hex_chain(test_hex_chain) == '14ede5e8e97ad9372327728f5099b95604a39593cac3bd38a343ad76205213e7'
+def test_root(tree):
+    assert tree.root.val.encode('hex') == '14ede5e8e97ad9372327728f5099b95604a39593cac3bd38a343ad76205213e7'
 
 
-def test4():
-    assert test_node.p.r.sib == test_node
+def test_chain(chain):
+    assert check_chain(chain) == "\x14\xed\xe5\xe8\xe9z\xd97#'r\x8fP\x99\xb9V\x04\xa3\x95\x93\xca\xc3\xbd8\xa3C\xadv R\x13\xe7"
 
 
-def test5():
-    assert test_node.p.r != test_node
+def test_hexchain(hexchain):
+    assert check_hex_chain(hexchain) == '14ede5e8e97ad9372327728f5099b95604a39593cac3bd38a343ad76205213e7'
 
 
-def test6():
-    assert test_node.p.p.p is None
+def test_traversal(node):
+    assert node.p.r.sib == node
 
 
-def test7():
-    assert test_node.p.p.val.encode('hex') == '14ede5e8e97ad9372327728f5099b95604a39593cac3bd38a343ad76205213e7'
+def test_xtraversal(node):
+    assert node.p.r != node
 
 
-def test8():
-    assert test_node.sib.val.encode('hex') == '3e23e8160039594a33894f6564e1b1348bbd7a0088d42c4acb73eeaed59c009d'
+def test_none_traversal(node):
+    assert node.p.p.p is None
 
 
-def test9():
-    assert test_node.val.encode('hex') == 'ca978112ca1bbdcafac231b39a23dc4da786eff8147c4e72b9807785afee48bb'
+def test_expected_parent(node):
+    assert node.p.p.val.encode('hex') == '14ede5e8e97ad9372327728f5099b95604a39593cac3bd38a343ad76205213e7'
 
 
-def test10():
-    assert test_tree == test_tree2
+def test_expected_sibling(node):
+    assert node.sib.val.encode('hex') == '3e23e8160039594a33894f6564e1b1348bbd7a0088d42c4acb73eeaed59c009d'
 
 
-def test11():
-    t11 = MerkleTree(['14ede5e8e97ad9372327728f5099b95604a39593cac3bd38a343ad76205213e7'], prehashed=True)
-    assert t11.build().encode('hex') == '14ede5e8e97ad9372327728f5099b95604a39593cac3bd38a343ad76205213e7'
+def test_node_val(node):
+    assert node.val.encode('hex') == 'ca978112ca1bbdcafac231b39a23dc4da786eff8147c4e72b9807785afee48bb'
 
 
-def test12():
-    mod_chain = test_chain[::]
-    mod_chain[1] = test_chain[1][0], ''
-    try:
+def test_prehashed():
+    other_tree = MerkleTree(['14ede5e8e97ad9372327728f5099b95604a39593cac3bd38a343ad76205213e7'], prehashed=True)
+    assert other_tree.build().encode('hex') == '14ede5e8e97ad9372327728f5099b95604a39593cac3bd38a343ad76205213e7'
+
+
+def test_modified(chain):
+    mod_chain = chain[::]
+    mod_chain[1] = chain[1][0], ''
+    with pytest.raises(MerkleError) as excinfo:
         check_chain(mod_chain)
-    except MerkleError, e:
-        assert e.message == 'Link 1 has no side value: 3e23e8160039594a33894f6564e1b1348bbd7a0088d42c4acb73eeaed59c009d'
-        return
-    raise AssertionError('Test 12: Hash chain validated when it should not have.')
+    assert excinfo.value.message == 'Link 1 has no side value: 3e23e8160039594a33894f6564e1b1348bbd7a0088d42c4acb73eeaed59c009d'
 
 
-def test13():
+def test_join(chain):
     toptree = MerkleTree([i for i in 'abc'])
     toptree.add_hash('14ede5e8e97ad9372327728f5099b95604a39593cac3bd38a343ad76205213e7')
     toproot = toptree.build()
     topchain = toptree.get_chain(3)
-    joined_chain = join_chains(test_chain, topchain)
+    joined_chain = join_chains(chain, topchain)
     assert check_chain(joined_chain) == toproot
 
 
-def test14():
-    mod_chain = test_chain[::]
-    mod_chain[1] = test_chain[1][0][:-1] + 'p', test_chain[1][1]
-    try:
+def test_invalid_chain(chain):
+    mod_chain = chain[::]
+    mod_chain[1] = chain[1][0][:-1] + 'p', chain[1][1]
+    with pytest.raises(MerkleError) as excinfo:
         check_chain(mod_chain)
-    except MerkleError, e:
-        assert e.message == 'The Merkle Chain is not valid.'
-        return
-    raise AssertionError('Test 14: Hash chain validated when it should not have.')
+    assert excinfo.value.message == 'The Merkle Chain is not valid.'
 
 
-def test15():
-    tree_15 = MerkleTree([i for i in 'abcd'])
-    root = tree_15.build().encode('hex')
+def test_clear(tree):
+    tree = MerkleTree([i for i in 'abcd'])
+    root = tree.build().encode('hex')
     assert root == '14ede5e8e97ad9372327728f5099b95604a39593cac3bd38a343ad76205213e7'
-    tree_15.clear()
-    assert tree_15.root is None
-    assert tree_15.leaves[0].p is None
+    tree.clear()
+    assert tree.root is None
+    assert tree.leaves == []
 
 
-def test16():
-    all_chains = test_tree.get_all_hex_chains()
+def test_full_output(tree):
+    all_chains = tree.get_all_hex_chains()
     assert json.dumps(all_chains) == """\
 [[["ca978112ca1bbdcafac231b39a23dc4da786eff8147c4e72b9807785afee48bb", "SELF"], \
 ["3e23e8160039594a33894f6564e1b1348bbd7a0088d42c4acb73eeaed59c009d", "R"], \
@@ -126,15 +122,21 @@ def test16():
 """
 
 
-def test17():
-    tree_17 = MerkleTree()
-    try:
-        tree_17.build()
-    except MerkleError, e:
-        assert e.message == 'The tree has no leaves and cannot be calculated.'
+def test_no_leaves():
+    tree = MerkleTree()
+    with pytest.raises(MerkleError) as excinfo:
+        tree.build()
+    assert excinfo.value.message == 'The tree has no leaves and cannot be calculated.'
 
 
-def test18():
-    test_tree3 = MerkleTree([i for i in 'abcd'])
-    test_tree3.build_fun()
-    assert test_tree == test_tree3
+def test_equality(tree):
+    other_tree = MerkleTree([i for i in 'abcd'])
+    other_tree.build_fun()
+    assert tree == other_tree
+
+
+def test_clear_and_rebuild(tree):
+    tree.clear()
+    tree.add('')
+    tree.build()
+    assert tree.root.val.encode('hex') == 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855'
