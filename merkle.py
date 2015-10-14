@@ -1,4 +1,5 @@
 from hashlib import sha256
+from math import log
 
 hash_function = sha256
 
@@ -63,7 +64,6 @@ class MerkleTree(object):
         self.root = None
         for leaf in self.leaves:
             leaf.p, leaf.sib, leaf.side = (None, ) * 3
-        self.leaves = []
 
     def build(self):
         """Calculate the merkle root and make references between nodes in the tree.
@@ -135,6 +135,35 @@ class MerkleTree(object):
         """Assemble and return a list of all chains for all nodes to the merkle root, hex encoded.
         """
         return [[(i[0].encode('hex'), i[1]) for i in j] for j in self.get_all_chains()]
+
+    def _get_whole_subtrees(self):
+        """Returns an array of nodes in the tree that have balanced subtrees beneath them,
+        moving from left to right.
+        """
+        subtrees = []
+        loose_leaves = len(self.leaves) - 2**int(log(len(self.leaves), 2))
+        the_node = self.root
+        while loose_leaves:
+            subtrees.append(the_node.l)
+            the_node = the_node.r
+            loose_leaves = loose_leaves - 2**int(log(loose_leaves, 2))
+        subtrees.append(the_node)
+        return subtrees
+
+    def add_adjust(self, data, prehashed=False):
+        """Add a new leaf, and adjust the tree, without rebuilding the whole thing.
+        """
+        subtrees = self._get_whole_subtrees()
+        new_node = Node(data, prehashed=prehashed)
+        self.leaves.append(new_node)
+        for node in reversed(subtrees):
+            new_parent = Node(node.val + new_node.val)
+            node.p, new_node.p = new_parent, new_parent
+            new_parent.l, new_parent.r = node, new_node
+            node.sib, new_node.sib = new_node, node
+            node.side, new_node.side = 'L', 'R'
+            new_node = new_node.p
+        self.root = new_node
 
 
 def check_chain(chain):

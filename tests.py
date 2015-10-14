@@ -97,7 +97,7 @@ def test_clear(tree):
     assert root == '14ede5e8e97ad9372327728f5099b95604a39593cac3bd38a343ad76205213e7'
     tree.clear()
     assert tree.root is None
-    assert tree.leaves == []
+    assert len(tree.leaves) == 4
 
 
 def test_full_output(tree):
@@ -136,7 +136,21 @@ def test_equality(tree):
 
 
 def test_clear_and_rebuild(tree):
-    tree.clear()
-    tree.add('')
-    tree.build()
-    assert tree.root.val.encode('hex') == 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855'
+    other_tree = MerkleTree([i for i in 'abc'])
+    other_tree.build()
+    other_tree.clear()
+    other_tree.add('d')
+    other_tree.build()
+    assert other_tree == tree
+
+
+def test_add_adjust():
+    inputs = 'abcdefghijklmnopqrstuvwxyz'
+    for i in range(1, len(inputs) + 1, 1):
+        control_tree = MerkleTree([j for j in inputs[0:i]])
+        control_tree.build()
+        test_tree = MerkleTree(inputs[0])
+        test_tree.build()
+        for k in range(1, i, 1):
+            test_tree.add_adjust(inputs[k])
+        assert control_tree == test_tree
