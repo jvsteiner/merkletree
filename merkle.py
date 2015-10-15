@@ -1,5 +1,4 @@
 from hashlib import sha256
-from math import log
 
 hash_function = sha256
 
@@ -138,23 +137,24 @@ class MerkleTree(object):
 
     def _get_whole_subtrees(self):
         """Returns an array of nodes in the tree that have balanced subtrees beneath them,
-        moving from left to right.
+        moving from the root down the right side of the tree.
         """
         subtrees = []
-        loose_leaves = len(self.leaves) - 2**int(log(len(self.leaves), 2))
+        loose_leaves = len(self.leaves) - 2**(len(self.leaves).bit_length() - 1)
         the_node = self.root
         while loose_leaves:
             subtrees.append(the_node.l)
             the_node = the_node.r
-            loose_leaves = loose_leaves - 2**int(log(loose_leaves, 2))
+            loose_leaves = loose_leaves - 2**(loose_leaves.bit_length() - 1)
         subtrees.append(the_node)
         return subtrees
 
     def add_adjust(self, data, prehashed=False):
-        """Add a new leaf, and adjust the tree, without rebuilding the whole thing.
+        """Add a new leaf, and adjust the tree, without rebuilding the whole thing. caution, this incorrectly
+        does not work with hex formatted inputs at the moment
         """
         subtrees = self._get_whole_subtrees()
-        new_node = Node(data, prehashed=prehashed)
+        new_node = Node(data, prehashed=prehashed)  # must be binary string
         self.leaves.append(new_node)
         for node in reversed(subtrees):
             new_parent = Node(node.val + new_node.val)

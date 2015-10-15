@@ -149,8 +149,22 @@ def test_add_adjust():
     for i in range(1, len(inputs) + 1, 1):
         control_tree = MerkleTree([j for j in inputs[0:i]])
         control_tree.build()
-        test_tree = MerkleTree(inputs[0])
+        test_tree = MerkleTree([inputs[0]])
         test_tree.build()
         for k in range(1, i, 1):
             test_tree.add_adjust(inputs[k])
         assert control_tree == test_tree
+        assert control_tree.get_all_chains() == test_tree.get_all_chains()
+
+
+def test_add_adjust_prehashed():
+    inputs = 'abcdefghijklmnopqrstuvwxyz'
+    for i in range(1, len(inputs) + 1, 1):
+        control_tree = MerkleTree([hash_function(j).hexdigest() for j in inputs[0:i]], prehashed=True)
+        control_tree.build()
+        test_tree = MerkleTree([hash_function(inputs[0]).hexdigest()], prehashed=True)
+        test_tree.build()
+        for k in range(1, i, 1):
+            test_tree.add_adjust(hash_function(inputs[k]).digest(), prehashed=True)
+        assert control_tree == test_tree
+        assert control_tree.get_all_chains() == test_tree.get_all_chains()
