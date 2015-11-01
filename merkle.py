@@ -194,4 +194,6 @@ def join_chains(low, high):
     to a higher level tree. The resulting chain should check out using the check functions. Use on either
     hex or binary chains.
     """
+    if not low[-1][0] == high[0][0]:
+        raise MerkleError('The two chains do not connect.')
     return low[:-1] + high[1:]
