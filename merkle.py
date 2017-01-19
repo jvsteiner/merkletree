@@ -33,8 +33,10 @@ class MerkleTree(object):
     Data supplied to the constructor is hashed by default, but this can be overridden by
     providing prehashed=True in which case, node values should be hex encoded.
     """
-    def __init__(self, leaves=[], prehashed=False):
-        if prehashed:
+    def __init__(self, leaves=[], prehashed=False, raw_digests=False):
+        if prehashed and raw_digests:
+            self.leaves = [Node(leaf, prehashed=True) for leaf in leaves]
+        elif prehashed:
             self.leaves = [Node(leaf.decode('hex'), prehashed=True) for leaf in leaves]
         else:
             self.leaves = [Node(leaf) for leaf in leaves]

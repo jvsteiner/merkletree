@@ -81,6 +81,7 @@ def test_join(chain):
     joined_chain = join_chains(chain, topchain)
     assert check_chain(joined_chain) == toproot
 
+
 def test_invalid_join(chain):
     toptree = MerkleTree([i for i in 'uio'])
     toptree.build()

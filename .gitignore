@@ -4,3 +4,6 @@ venv/
 build/
 ignore.txt
 dist/
+merkle.build/
+merkle.so
+.cache/
