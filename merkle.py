@@ -1,4 +1,6 @@
 from hashlib import sha256
+from math import log
+import codecs
 
 hash_function = sha256
 
@@ -24,7 +26,7 @@ class Node(object):
         self.side = None
 
     def __repr__(self):
-        return "Val: <" + str(self.val.encode('hex')) + ">"
+        return "Val: <" + str(codecs.encode(self.val, 'hex_codec')) + ">"
 
 
 class MerkleTree(object):
@@ -37,7 +39,7 @@ class MerkleTree(object):
         if prehashed and raw_digests:
             self.leaves = [Node(leaf, prehashed=True) for leaf in leaves]
         elif prehashed:
-            self.leaves = [Node(leaf.decode('hex'), prehashed=True) for leaf in leaves]
+            self.leaves = [Node(codecs.decode(leaf, 'hex_codec'), prehashed=True) for leaf in leaves]
         else:
             self.leaves = [Node(leaf) for leaf in leaves]
         self.root = None
@@ -53,7 +55,7 @@ class MerkleTree(object):
     def add_hash(self, value):
         """Add a Node based on a precomputed, hex encoded, hash value.
         """
-        self.leaves.append(Node(value.decode('hex'), prehashed=True))
+        self.leaves.append(Node(codecs.decode(value, 'hex_codec'), prehashed=True))
 
     def clear(self):
         """Clears the Merkle Tree by releasing the Merkle root and each leaf's references, the rest
@@ -130,33 +132,32 @@ class MerkleTree(object):
         """Assemble and return the chain leading from a given node to the merkle root of this tree
         with hash values in hex form
         """
-        return [(i[0].encode('hex'), i[1]) for i in self.get_chain(index)]
+        return [(codecs.encode(i[0], 'hex_codec'), i[1]) for i in self.get_chain(index)]
 
     def get_all_hex_chains(self):
         """Assemble and return a list of all chains for all nodes to the merkle root, hex encoded.
         """
-        return [[(i[0].encode('hex'), i[1]) for i in j] for j in self.get_all_chains()]
+        return [[(codecs.encode(i[0], 'hex_codec'), i[1]) for i in j] for j in self.get_all_chains()]
 
     def _get_whole_subtrees(self):
         """Returns an array of nodes in the tree that have balanced subtrees beneath them,
-        moving from the root down the right side of the tree.
+        moving from left to right.
         """
         subtrees = []
-        loose_leaves = len(self.leaves) - 2**(len(self.leaves).bit_length() - 1)
+        loose_leaves = len(self.leaves) - 2**int(log(len(self.leaves), 2))
         the_node = self.root
         while loose_leaves:
             subtrees.append(the_node.l)
             the_node = the_node.r
-            loose_leaves = loose_leaves - 2**(loose_leaves.bit_length() - 1)
+            loose_leaves = loose_leaves - 2**int(log(loose_leaves, 2))
         subtrees.append(the_node)
         return subtrees
 
     def add_adjust(self, data, prehashed=False):
-        """Add a new leaf, and adjust the tree, without rebuilding the whole thing. caution, this incorrectly
-        does not work with hex formatted inputs at the moment
+        """Add a new leaf, and adjust the tree, without rebuilding the whole thing.
         """
         subtrees = self._get_whole_subtrees()
-        new_node = Node(data, prehashed=prehashed)  # must be binary string
+        new_node = Node(data, prehashed=prehashed)
         self.leaves.append(new_node)
         for node in reversed(subtrees):
             new_parent = Node(node.val + new_node.val)
@@ -178,7 +179,7 @@ def check_chain(chain):
         elif chain[i][1] == 'L':
             link = hash_function(chain[i][0] + link).digest()
         else:
-            raise MerkleError('Link %s has no side value: %s' % (str(i), str(chain[i][0].encode('hex'))))
+            raise MerkleError('Link %s has no side value: %s' % (str(i), str(codecs.encode(chain[i][0], 'hex_codec'))))
     if link == chain[-1][0]:
         return link
     else:
@@ -188,7 +189,7 @@ def check_chain(chain):
 def check_hex_chain(chain):
     """Verify a merkle chain, with hashes hex encoded, to see if the Merkle root can be reproduced.
     """
-    return check_chain([(i[0].decode('hex'), i[1]) for i in chain]).encode('hex')
+    return codecs.encode(check_chain([(codecs.decode(i[0], 'hex_codec'), i[1]) for i in chain]), 'hex_codec')
 
 
 def join_chains(low, high):
