@@ -14,6 +14,8 @@ class Node(object):
     and sibling (sib) node. It can also be aware of whether it is on the left or right hand side (side).
     data is hashed automatically by default, but does not have to be, if prehashed param is set to True.
     """
+    __slots__ = ['l', 'r', 'p', 'sib', 'side', 'val']
+
     def __init__(self, data, prehashed=False):
         if prehashed:
             self.val = data
