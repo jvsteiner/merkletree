@@ -16,11 +16,12 @@ class Node(object):
     """
     __slots__ = ['l', 'r', 'p', 'sib', 'side', 'val']
 
-    def __init__(self, data, prehashed=False):
+    def __init__(self, data, prehashed=False, hash_fn=None):
+        hash_fn = hash_fn or hash_function
         if prehashed:
             self.val = data
         else:
-            self.val = hash_function(data).digest()
+            self.val = hash_fn(data).digest()
         self.l = None
         self.r = None
         self.p = None
@@ -37,13 +38,15 @@ class MerkleTree(object):
     Data supplied to the constructor is hashed by default, but this can be overridden by
     providing prehashed=True in which case, node values should be hex encoded.
     """
-    def __init__(self, leaves=[], prehashed=False, raw_digests=False):
+    def __init__(self, leaves=None, prehashed=False, raw_digests=False, hash_fn=None):
+        leaves = leaves or []
+        self.hash_fn = hash_fn or hash_function
         if prehashed and raw_digests:
-            self.leaves = [Node(leaf, prehashed=True) for leaf in leaves]
+            self.leaves = [Node(leaf, prehashed=True, hash_fn=self.hash_fn) for leaf in leaves]
         elif prehashed:
-            self.leaves = [Node(codecs.decode(leaf, 'hex_codec'), prehashed=True) for leaf in leaves]
+            self.leaves = [Node(codecs.decode(leaf, 'hex_codec'), prehashed=True, hash_fn=self.hash_fn) for leaf in leaves]
         else:
-            self.leaves = [Node(leaf) for leaf in leaves]
+            self.leaves = [Node(leaf, hash_fn=self.hash_fn) for leaf in leaves]
         self.root = None
 
     def __eq__(self, obj):
@@ -52,12 +55,12 @@ class MerkleTree(object):
     def add(self, data):
         """Add a Node to the tree, providing data, which is hashed automatically.
         """
-        self.leaves.append(Node(data))
+        self.leaves.append(Node(data, hash_fn=self.hash_fn))
 
     def add_hash(self, value):
         """Add a Node based on a precomputed, hex encoded, hash value.
         """
-        self.leaves.append(Node(codecs.decode(value, 'hex_codec'), prehashed=True))
+        self.leaves.append(Node(codecs.decode(value, 'hex_codec'), prehashed=True, hash_fn=self.hash_fn))
 
     def clear(self):
         """Clears the Merkle Tree by releasing the Merkle root and each leaf's references, the rest
@@ -104,7 +107,7 @@ class MerkleTree(object):
         if len(leaves) % 2 == 1:
             odd = leaves.pop(-1)
         for i in range(0, len(leaves), 2):
-            newnode = Node(leaves[i].val + leaves[i + 1].val)
+            newnode = Node(leaves[i].val + leaves[i + 1].val, hash_fn=self.hash_fn)
             newnode.l, newnode.r = leaves[i], leaves[i + 1]
             leaves[i].side, leaves[i + 1].side, leaves[i].p, leaves[i + 1].p = 'L', 'R', newnode, newnode
             leaves[i].sib, leaves[i + 1].sib = leaves[i + 1], leaves[i]
@@ -159,10 +162,10 @@ class MerkleTree(object):
         """Add a new leaf, and adjust the tree, without rebuilding the whole thing.
         """
         subtrees = self._get_whole_subtrees()
-        new_node = Node(data, prehashed=prehashed)
+        new_node = Node(data, prehashed=prehashed, hash_fn=self.hash_fn)
         self.leaves.append(new_node)
         for node in reversed(subtrees):
-            new_parent = Node(node.val + new_node.val)
+            new_parent = Node(node.val + new_node.val, hash_fn=self.hash_fn)
             node.p, new_node.p = new_parent, new_parent
             new_parent.l, new_parent.r = node, new_node
             node.sib, new_node.sib = new_node, node
